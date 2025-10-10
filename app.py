@@ -550,7 +550,7 @@ class NovelPublisherApp(tk.Tk):
                     print(f"计划：日更{daily_publish_num}章！")
 
                 list_count = len(novel_files)
-                for novel_file in novel_files:
+                for i, novel_file in novel_files:
                     chapter_details = self.get_chapter_details(novel_file)
                     if publish_mode == "pre-publish":
                         if daily_publish_num > 0:
