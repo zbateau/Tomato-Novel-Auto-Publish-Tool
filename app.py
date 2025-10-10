@@ -328,11 +328,15 @@ class NovelPublisherApp(tk.Tk):
 
         with open(filepath, 'r', encoding='utf-8') as f:
             first_line = f.readline().strip()
-            # 检查是否是Markdown标题
-            if first_line.startswith('#'):
-                chapter_title = first_line.lstrip('# ').split('：', 1)[-1]
+            if first_line.find('：') == -1:
+                c_index = first_line.find('章') + 1
+                chapter_title = first_line[c_index + 1:]
             else:
-                chapter_title = first_line.split('：', 1)[-1] if '：' in first_line else first_line
+                # 检查是否是Markdown标题
+                if first_line.startswith('#'):
+                    chapter_title = first_line.lstrip('# ').split('：', 1)[-1]
+                else:
+                    chapter_title = first_line.split('：', 1)[-1] if '：' in first_line else first_line
 
             content = f.read()
 
