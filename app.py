@@ -17,6 +17,7 @@ import datetime
 CONFIG_FILE = 'config.ini'
 AUTH_FILE = 'auth.json'
 
+
 class NovelPublisherApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -39,13 +40,16 @@ class NovelPublisherApp(tk.Tk):
 
         # URL
         ttk.Label(config_frame, text="浏览器地址:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
-        self.custom_browser_path_var = tk.StringVar(value=self.config.get('Settings', 'custom_browser_path', fallback=''))
-        ttk.Entry(config_frame, textvariable=self.custom_browser_path_var, width=80).grid(row=0, column=1, sticky=tk.EW, padx=5)
+        self.custom_browser_path_var = tk.StringVar(
+            value=self.config.get('Settings', 'custom_browser_path', fallback=''))
+        ttk.Entry(config_frame, textvariable=self.custom_browser_path_var, width=80).grid(row=0, column=1, sticky=tk.EW,
+                                                                                          padx=5)
 
         # Publish Mode
         ttk.Label(config_frame, text="发布模式:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
         self.publish_mode_var = tk.StringVar(value=self.config.get('Settings', 'publish_mode', fallback='publish'))
-        ttk.Combobox(config_frame, textvariable=self.publish_mode_var, values=['publish', 'draft', 'pre-publish']).grid(row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Combobox(config_frame, textvariable=self.publish_mode_var, values=['publish', 'draft', 'pre-publish']).grid(
+            row=1, column=1, sticky=tk.W, padx=5)
 
         # Publish Time
         ttk.Label(config_frame, text="每日定时发布时间:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=2)
@@ -55,7 +59,8 @@ class NovelPublisherApp(tk.Tk):
         # Daily Publish Num
         ttk.Label(config_frame, text="每日更新章节数:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=2)
         self.daily_publish_num_var = tk.StringVar(value=self.config.get('Settings', 'daily_publish_num', fallback='2'))
-        ttk.Entry(config_frame, textvariable=self.daily_publish_num_var, width=10).grid(row=3, column=1, sticky=tk.W, padx=5)
+        ttk.Entry(config_frame, textvariable=self.daily_publish_num_var, width=10).grid(row=3, column=1, sticky=tk.W,
+                                                                                        padx=5)
 
         # Novel Title
         ttk.Label(config_frame, text="小说标题:").grid(row=4, column=0, sticky=tk.W, padx=5, pady=2)
@@ -65,27 +70,31 @@ class NovelPublisherApp(tk.Tk):
         # Novels Folder
         ttk.Label(config_frame, text="小说文件/文件夹:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=2)
         self.novels_folder_var = tk.StringVar(value=self.config.get('Novel', 'novels_folder', fallback=''))
-        ttk.Entry(config_frame, textvariable=self.novels_folder_var, width=80).grid(row=5, column=1, sticky=tk.EW, padx=5)
+        ttk.Entry(config_frame, textvariable=self.novels_folder_var, width=80).grid(row=5, column=1, sticky=tk.EW,
+                                                                                    padx=5)
 
         # Fast Publish Mode
         ttk.Label(config_frame, text="最速开书发布:").grid(row=6, column=0, sticky=tk.W, padx=5, pady=2)
         self.fast_publish_mode_var = tk.StringVar(value="15*3+2*7")
-        ttk.Combobox(config_frame, textvariable=self.fast_publish_mode_var, values=["15*3+2*7", "10*1+15*2+3*7", "10*4+5*7"]).grid(row=6, column=1, sticky=tk.W, padx=5)
- 
-  
+        ttk.Combobox(config_frame, textvariable=self.fast_publish_mode_var,
+                     values=["15*3+2*7", "10*1+15*2+3*7", "10*4+5*7"]).grid(row=6, column=1, sticky=tk.W, padx=5)
+
         config_frame.columnconfigure(1, weight=1)
 
         # Save Config Button
-        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=6, column=1, sticky=tk.E, padx=5, pady=5)
+        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=6, column=1, sticky=tk.E, padx=5,
+                                                                                 pady=5)
 
         # --- Action Section ---
         action_frame = ttk.LabelFrame(main_frame, text="操作", padding="10")
         action_frame.pack(fill=tk.X, pady=5)
 
         # Last Published Chapter
-        self.last_published_chapter_date_var =  tk.StringVar(value=self.config.get('History', 'last_published_chapter_date', fallback='N/A'))
+        self.last_published_chapter_date_var = tk.StringVar(
+            value=self.config.get('History', 'last_published_chapter_date', fallback='N/A'))
         ttk.Label(action_frame, text=f"上次更新日期:").pack(side=tk.LEFT, padx=5)
-        self.last_published_chapter_date_entry = ttk.Entry(action_frame, textvariable=self.last_published_chapter_date_var, width=10)
+        self.last_published_chapter_date_entry = ttk.Entry(action_frame,
+                                                           textvariable=self.last_published_chapter_date_var, width=10)
         self.last_published_chapter_date_entry.pack(side=tk.LEFT, padx=5)
 
         # Chapter Range
@@ -106,7 +115,8 @@ class NovelPublisherApp(tk.Tk):
         ttk.Checkbutton(action_frame, text="后台执行", variable=self.keep_browser_open_var).pack(side=tk.LEFT, padx=20)
 
         self.fast_once_create_book_var = tk.BooleanVar()
-        ttk.Checkbutton(action_frame, text="最速开书", variable=self.fast_once_create_book_var).pack(side=tk.LEFT, padx=20)
+        ttk.Checkbutton(action_frame, text="最速开书", variable=self.fast_once_create_book_var).pack(side=tk.LEFT,
+                                                                                                     padx=20)
 
         # Login Button
         self.login_page = None
@@ -173,7 +183,7 @@ class NovelPublisherApp(tk.Tk):
         if self.login_page:
             self.login_event.set()
         else:
-            threading.Thread(target=self.login, daemon=True).start()    
+            threading.Thread(target=self.login, daemon=True).start()
 
     def login(self):
         site_url = self.config['Settings']['url']
@@ -255,7 +265,7 @@ class NovelPublisherApp(tk.Tk):
             title = parts[i].strip()
             # Ensure there is content for the chapter
             if i + 1 < len(parts):
-                chapter_content = parts[i+1].strip()
+                chapter_content = parts[i + 1].strip()
                 chapters.append({"title": title, "content": chapter_content})
 
         # As per the request, we use the chapter index for file naming,
@@ -270,7 +280,7 @@ class NovelPublisherApp(tk.Tk):
             _title = _title.replace(' ', '')
             file_name = f"Chapter_{chapter_number:03d}.md"
             file_path = os.path.join(output_dir, file_name)
-            
+
             with open(file_path, 'w', encoding='utf-8') as chapter_file:
                 chapter_file.write(f"# {_title}\n\n")
                 chapter_file.write(chapter['content'])
@@ -286,7 +296,7 @@ class NovelPublisherApp(tk.Tk):
             return []
 
         all_files = sorted([os.path.join(novels_folder, f) for f in os.listdir(novels_folder) if f.endswith('.md')])
-        
+
         chapter_files = []
         for filepath in all_files:
             basename = os.path.basename(filepath)
@@ -295,8 +305,9 @@ class NovelPublisherApp(tk.Tk):
             if match:
                 chapter_num = int(match.group(1))
                 if start_chapter <= chapter_num <= end_chapter:
-                    chapter_files.append(filepath)
-        
+                    chapter_files.append((chapter_num, filepath))
+        chapter_files.sort(key=lambda x: x[0])
+
         if not chapter_files:
             print(f"在文件夹 {novels_folder} 中没有找到从第 {start_chapter} 章到第 {end_chapter} 章的小说文件。")
 
@@ -307,14 +318,14 @@ class NovelPublisherApp(tk.Tk):
         """从.md文件中提取章节序号、标题和内容。"""
         basename = os.path.basename(filepath)
         filename, _ = os.path.splitext(basename)
-        
+
         # 从 "Chapter_001" 格式中提取序号
         match = re.search(r'_(\d+)', filename)
         if match:
             chapter_num = match.group(1)
         else:
             raise ValueError(f"文件名 {filename} 格式错误，未找到章节序号。")
-        
+
         with open(filepath, 'r', encoding='utf-8') as f:
             first_line = f.readline().strip()
             # 检查是否是Markdown标题
@@ -322,18 +333,17 @@ class NovelPublisherApp(tk.Tk):
                 chapter_title = first_line.lstrip('# ').split('：', 1)[-1]
             else:
                 chapter_title = first_line.split('：', 1)[-1] if '：' in first_line else first_line
-            
+
             content = f.read()
-            
+
         print(f"读取章节: 第{chapter_num}章 - {chapter_title}")
         return chapter_num, chapter_title, content
-
 
     def publish_single_chapter(self, context: BrowserContext, page: Page, chapter_details: tuple):
         """发布单个章节，处理新打开的页面，并在完成后关闭。"""
         chapter_num, chapter_title, chapter_content = chapter_details
         print(f"\n--- 开始发布: 第{chapter_num}章 ---")
-        
+
         publish_page = None
         try:
             # 使用更稳定的方式查找小说并点击更新
@@ -349,18 +359,18 @@ class NovelPublisherApp(tk.Tk):
                 print("已切换到新的发布页面。")
 
             # --- 在新页面上执行操作 ---
-            publish_page.locator("#app").get_by_role("button", name="下一步").click() # 预先点击去除新手引导
+            publish_page.locator("#app").get_by_role("button", name="下一步").click()  # 预先点击去除新手引导
             # publish_page.click('body')
             print(f"填写章节序号: {chapter_num}")
             publish_page.wait_for_selector('span.left-input > input', timeout=5000)
             publish_page.fill('span.left-input > input', chapter_num.strip())
-            
+
             print(f"填写章节标题: {chapter_title}")
             publish_page.get_by_placeholder("请输入标题").fill(chapter_title.strip())
 
             print("粘贴章节正文...")
-            edit_path = '#app > div > div > div > div.publish-body > div.editor > div.serial-editor-container.notranslate > '\
-            'div > div > div.syl-editor-container.font-size-16.indent-2 > div > div.ProseMirror'
+            edit_path = '#app > div > div > div > div.publish-body > div.editor > div.serial-editor-container.notranslate > ' \
+                        'div > div > div.syl-editor-container.font-size-16.indent-2 > div > div.ProseMirror'
 
             publish_page.wait_for_selector(edit_path, timeout=10000)
             publish_page.fill(edit_path, chapter_content)
@@ -385,7 +395,7 @@ class NovelPublisherApp(tk.Tk):
                     except:
                         publish_page.fill('span.left-input > input', chapter_num.strip())
                         publish_page.get_by_role("button", name="下一步").click()
-                    
+
                 print("发布设置...")
                 # 选择“否”单选框
                 publish_page.click('div.card-content-line-control > div > label:nth-child(2)')
@@ -395,20 +405,20 @@ class NovelPublisherApp(tk.Tk):
                     # 勾选定时发布
                     publish_page.click('div > div.card-content-line-control > div > button', timeout=3000)
                     # publish_page.get_by_role("button", name="定时发布").click()
-                    
+
                     print("定时发布时间: ", self.publish_time.strftime('%Y-%m-%d %H:%M'))
                     # publish_page.wait_for_selector('div:nth-child(1) > div.card-content-line-control > div > div.arco-picker-input > input', timeout=3000)
                     # publish_page.fill('div:nth-child(1) > div.card-content-line-control > div > div.arco-picker-input > input', 
                     # self.publish_time.strftime('%Y-%m-%d'))
                     # publish_page.fill('div:nth-child(2) > div.card-content-line-control > div > div.arco-picker-input > input', 
                     # self.publish_time.strftime('%H:%M'))
-                    
+
                     # 使用 get_by_placeholder 来定位输入框，并确保先清空再填写
                     date_input = publish_page.get_by_placeholder("请选择日期")
                     date_input.clear()
                     date_input.fill(self.publish_time.strftime('%Y-%m-%d'))
                     date_input.press("Enter")
-                    
+
                     time_input = publish_page.get_by_placeholder("请选择时间")
                     time_input.clear()
                     time_input.fill(self.publish_time.strftime('%H:%M'))
@@ -416,9 +426,9 @@ class NovelPublisherApp(tk.Tk):
 
                 # 点击确认发布按钮
                 publish_page.get_by_role("button", name="确认发布").click()
-        
+
             print(f"--- 第{chapter_num}章发布成功！---")
-            publish_page.wait_for_timeout(3000) # 等待一下，确保操作完成
+            publish_page.wait_for_timeout(3000)  # 等待一下，确保操作完成
 
         except Exception as e:
             print(f"发布第{chapter_num}章时发生错误: {e}")
@@ -429,7 +439,7 @@ class NovelPublisherApp(tk.Tk):
                 print("关闭章节发布页面...")
                 publish_page.close()
             return True
-        
+
     def automation_flow(self):
         """主自动化流程，负责初始化和循环调用章节发布。"""
         custom_browser_path = self.custom_browser_path_var.get()
@@ -451,12 +461,13 @@ class NovelPublisherApp(tk.Tk):
                 raise Exception("从小说文件中分解章节失败")
             else:
                 novels_folder = novels_folder.replace('.txt', '')
-        
+
         if start_chapter is not None and end_chapter is not None:
             novel_files = self.get_chapter_files_in_range(novels_folder, start_chapter, end_chapter)
         else:
-            novel_files = sorted([os.path.join(novels_folder, f) for f in os.listdir(novels_folder) if f.endswith('.md')])
-            
+            novel_files = sorted(
+                [os.path.join(novels_folder, f) for f in os.listdir(novels_folder) if f.endswith('.md')])
+
         if not novel_files:
             print(f"在文件夹 {novels_folder} 中没有找到要发布的小说文件。")
             return
@@ -476,33 +487,36 @@ class NovelPublisherApp(tk.Tk):
                     print("已关闭初始引导浮窗。")
                 except Exception:
                     print("未找到初始引导浮窗，继续执行...")
-                
+
                 print("点击进入小说列表页面...")
                 novel_list_selector = '#app > div > div.content.new-content > div.serial-affix > div > div > div > div > div:nth-child(2) > div.new-nav-children.new-nav-children-expanded > div:nth-child(1)'
                 try:
-                    page.wait_for_selector(novel_list_selector, timeout=60000) # 等待元素出现
-                    page.click(novel_list_selector, timeout=60000) # 延长点击超时
+                    page.wait_for_selector(novel_list_selector, timeout=60000)  # 等待元素出现
+                    page.click(novel_list_selector, timeout=60000)  # 延长点击超时
                     page.wait_for_load_state('networkidle')
                 except Exception as e:
                     print(f"点击小说列表导航元素时发生错误: {e}")
-                    raise # 重新抛出异常以便上层捕获
+                    raise  # 重新抛出异常以便上层捕获
 
                 print(f"正在查找小说: '{novel_title}'")
 
                 while True:
                     page.wait_for_selector('[id^="long-article-table-item-"]')
-                    page.wait_for_timeout(3000) # 等待一下，确保加载完成
+                    page.wait_for_timeout(3000)  # 等待一下，确保加载完成
                     novel_items = page.query_selector_all('[id^="long-article-table-item-"]')
                     update_button = None
                     for item in novel_items:
-                        title_element = item.query_selector('div > div.book-item-info > div.info-content > div.info-content-title.font-1 > div')
+                        title_element = item.query_selector(
+                            'div > div.book-item-info > div.info-content > div.info-content-title.font-1 > div')
                         # print(title_element.inner_text())
                         if title_element and title_element.inner_text() == novel_title:
                             print(f"找到小说 '{novel_title}'。")
                             # 定位到“更新章节”按钮
                             item.hover(timeout=3000)  # 鼠标悬停到该小说条目，确保按钮可见  
-                            update_button = item.query_selector('div > div.book-item-info > div.info-content > div.info-right > div > a:nth-child(3) > button')
-                            update_button_unsign = item.query_selector('div > div.book-item-info > div.info-content > div.info-right > div > a:nth-child(4) > button')
+                            update_button = item.query_selector(
+                                'div > div.book-item-info > div.info-content > div.info-right > div > a:nth-child(3) > button')
+                            update_button_unsign = item.query_selector(
+                                'div > div.book-item-info > div.info-content > div.info-right > div > a:nth-child(4) > button')
                             if update_button:
                                 break
                             elif update_button_unsign:
@@ -511,10 +525,12 @@ class NovelPublisherApp(tk.Tk):
                                 break
                             else:
                                 print("未找到'更新章节'按钮")
-                    
+
                     if not update_button:
-                        next_page_button_limit = page.query_selector('#arco-tabs-3-panel-0 > div > div > div > div.arco-pagination.arco-pagination-size-default.serial-pagination.long-article-table-pagination > ul > li.arco-pagination-item.arco-pagination-item-next.arco-pagination-item-disabled')
-                        next_page_button = page.query_selector("#arco-tabs-1-panel-0 > div > div > div > div.arco-pagination.arco-pagination-size-default.serial-pagination.long-article-table-pagination > ul > li.arco-pagination-item.arco-pagination-item-next") 
+                        next_page_button_limit = page.query_selector(
+                            '#arco-tabs-3-panel-0 > div > div > div > div.arco-pagination.arco-pagination-size-default.serial-pagination.long-article-table-pagination > ul > li.arco-pagination-item.arco-pagination-item-next.arco-pagination-item-disabled')
+                        next_page_button = page.query_selector(
+                            "#arco-tabs-1-panel-0 > div > div > div > div.arco-pagination.arco-pagination-size-default.serial-pagination.long-article-table-pagination > ul > li.arco-pagination-item.arco-pagination-item-next")
                         if next_page_button and not next_page_button_limit:
                             next_page_button.click()
                             page.wait_for_load_state('networkidle')
@@ -557,24 +573,23 @@ class NovelPublisherApp(tk.Tk):
                     self.config['History']['last_published_chapter'] = str(end_chapter)
                     self.config['History']['last_published_chapter_date'] = self.publish_time.strftime('%Y-%m-%d')
                     # 更新界面输入框的显示值
-                    self.start_chapter_var.set(str(end_chapter+1))
+                    self.start_chapter_var.set(str(end_chapter + 1))
                     self.end_chapter_var.set(str(end_chapter + int(self.daily_publish_num_var.get()) + 1))
                     self.last_published_chapter_date_var.set(self.publish_time.strftime('%Y-%m-%d'))
- 
+
                     with open(CONFIG_FILE, 'w', encoding='utf-8') as configfile:
-                        self.config.write(configfile) 
+                        self.config.write(configfile)
                     return True
                 else:
                     print("\n有章节发布失败，已停止发布后续章节。")
-                    return False    
+                    return False
             except Exception as e:
                 print("主自动化流程中发生错误:")
                 traceback.print_exc()
-                
 
     def new_novel_publish_once(self):
         print("执行最速开书！")
-        
+
         novels_folder = self.novels_folder_var.get()
         if novels_folder.endswith('.txt'):
             print("识别为小说文件，正在从文件中分解章节...")
@@ -583,7 +598,8 @@ class NovelPublisherApp(tk.Tk):
                 return
             novels_folder = novels_folder.replace('.txt', '')
 
-        all_files = sorted([os.path.join(novels_folder, f) for f in os.listdir(novels_folder) if f.endswith('.md') and f.startswith('Chapter_')])
+        all_files = sorted([os.path.join(novels_folder, f) for f in os.listdir(novels_folder) if
+                            f.endswith('.md') and f.startswith('Chapter_')])
         fast_publish_mode = self.fast_publish_mode_var.get()
         need_num = eval(fast_publish_mode)
         print(need_num)
@@ -601,7 +617,7 @@ class NovelPublisherApp(tk.Tk):
                 self.end_chapter_var.set("15")
                 if not self.automation_flow():
                     raise Exception("发布1-15章失败")
-    
+
                 # 第二步：预发布16-45章，每日15章
                 print("\n--- 步骤2: 预发布第16-45章 (每日15章) ---")
                 self.publish_mode_var.set("pre-publish")
@@ -613,7 +629,7 @@ class NovelPublisherApp(tk.Tk):
                 self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
                 if not self.automation_flow():
                     raise Exception("预发布16-45章失败")
-    
+
                 # 第三步：预发布46-60章，每日2章
                 print("\n--- 步骤3: 预发布第46-60章 (每日2章) ---")
                 self.publish_mode_var.set("pre-publish")
@@ -623,9 +639,9 @@ class NovelPublisherApp(tk.Tk):
                 # 从上一个发布任务结束后开始
                 if not self.automation_flow():
                     raise Exception("预发布46-60章失败")
-    
+
                 print("\n最速开书流程完成！")
-    
+
             except Exception as e:
                 print(f"最速开书流程中发生错误: {e}")
                 traceback.print_exc()
@@ -640,7 +656,7 @@ class NovelPublisherApp(tk.Tk):
                 self.end_chapter_var.set("10")
                 if not self.automation_flow():
                     raise Exception("发布1-10章失败")
-    
+
                 # 第二步：预发布11-40章，每日15章
                 print("\n--- 步骤2: 预发布第11-40章 (每日15章) ---")
                 self.publish_mode_var.set("pre-publish")
@@ -652,7 +668,7 @@ class NovelPublisherApp(tk.Tk):
                 self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
                 if not self.automation_flow():
                     raise Exception("预发布11-40章失败")
-    
+
                 # 第三步：预发布41-61章，每日3章
                 print("\n--- 步骤3: 预发布第41-61章 (每日3章) ---")
                 self.publish_mode_var.set("pre-publish")
@@ -662,9 +678,9 @@ class NovelPublisherApp(tk.Tk):
                 # 从上一个发布任务结束后开始
                 if not self.automation_flow():
                     raise Exception("预发布41-61章失败")
-    
+
                 print("\n最速开书流程完成！")
-    
+
             except Exception as e:
                 print(f"最速开书流程中发生错误: {e}")
                 traceback.print_exc()
@@ -707,6 +723,7 @@ class NovelPublisherApp(tk.Tk):
             except Exception as e:
                 print(f"最速开书流程中发生错误: {e}")
                 traceback.print_exc()
+
 
 if __name__ == "__main__":
     if datetime.datetime.now().year == 2025:
