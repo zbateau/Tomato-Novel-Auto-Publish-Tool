@@ -390,17 +390,24 @@ class NovelPublisherApp(tk.Tk):
                 print("处理发布确认弹窗...")
                 while not publish_page.get_by_role("button", name="确认发布").is_visible():
                     try:
-                        publish_page.get_by_role("button", name="提交").click(timeout=3000)
-                    except:
+                        publish_page.get_by_role("button", name="提交").click(timeout=1500)
+                    except Exception:
                         pass
                     try:
-                        publish_page.get_by_role("button", name="确定").click(timeout=3000)
-                        time.sleep(1.5)
-                    except:
-                        publish_page.fill('span.left-input > input', chapter_num.strip())
-                        publish_page.get_by_role("button", name="下一步").click()
+                        publish_page.get_by_role("button", name="确定").click(timeout=1500)
+                        print("确认风险预检")
+                        publish_page.wait_for_timeout(1500)
+                    except Exception:
+                        try:
+                            publish_page.fill('span.left-input > input', chapter_num.strip())
+                            publish_page.get_by_role("button", name="下一步").click(timeout=1500)
+                            print("已重新填写章节号并点击下一步")
+                        except Exception:
+                            # 所有操作失败时，短暂等待后继续循环
+                            publish_page.wait_for_timeout(500)
+                            continue
 
-                print("发布设置...")
+                print("发布设置...AI-默认否")
                 # 选择“否”单选框
                 publish_page.click('div.card-content-line-control > div > label:nth-child(2)')
                 # publish_page.get_by_role("radiogroup").get_by_role("radio", name="否").check()
