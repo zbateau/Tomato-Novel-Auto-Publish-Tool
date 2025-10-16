@@ -399,9 +399,22 @@ class NovelPublisherApp(tk.Tk):
                         publish_page.wait_for_timeout(1500)
                     except Exception:
                         try:
+                            print(f"重新填写章节序号: {chapter_num}")
+                            publish_page.wait_for_selector('span.left-input > input', timeout=5000)
                             publish_page.fill('span.left-input > input', chapter_num.strip())
+
+                            print(f"重新填写章节标题: {chapter_title}")
+                            publish_page.get_by_placeholder("请输入标题").fill(chapter_title.strip())
+
+                            print("重新粘贴章节正文...")
+                            edit_path = '#app > div > div > div > div.publish-body > div.editor > div.serial-editor-container.notranslate > ' \
+                                        'div > div > div.syl-editor-container.font-size-16.indent-2 > div > div.ProseMirror'
+
+                            publish_page.wait_for_selector(edit_path, timeout=10000)
+                            publish_page.fill(edit_path, chapter_content)
+                            publish_page.fill('span.left-input > input', chapter_num.strip())
+
                             publish_page.get_by_role("button", name="下一步").click(timeout=1500)
-                            print("已重新填写章节号并点击下一步")
                         except Exception:
                             # 所有操作失败时，短暂等待后继续循环
                             publish_page.wait_for_timeout(500)
@@ -424,16 +437,23 @@ class NovelPublisherApp(tk.Tk):
                     # publish_page.fill('div:nth-child(2) > div.card-content-line-control > div > div.arco-picker-input > input', 
                     # self.publish_time.strftime('%H:%M'))
 
+
                     # 使用 get_by_placeholder 来定位输入框，并确保先清空再填写
                     date_input = publish_page.get_by_placeholder("请选择日期")
-                    date_input.clear()
-                    date_input.fill(self.publish_time.strftime('%Y-%m-%d'))
-                    date_input.press("Enter")
+                    date_input_value = self.publish_time.strftime('%Y-%m-%d')
+                    while date_input.input_value() != date_input_value:
+                        date_input.clear()
+                        date_input.fill(date_input_value)
+                        date_input.press("Enter")
+                        publish_page.wait_for_timeout(1000)
 
                     time_input = publish_page.get_by_placeholder("请选择时间")
-                    time_input.clear()
-                    time_input.fill(self.publish_time.strftime('%H:%M'))
-                    time_input.press("Enter")
+                    time_input_value = self.publish_time.strftime('%H:%M')
+                    while time_input.input_value() != time_input_value:
+                        time_input.clear()
+                        time_input.fill(time_input_value)
+                        time_input.press("Enter")
+                        publish_page.wait_for_timeout(1000)
 
                 # 点击确认发布按钮
                 publish_page.get_by_role("button", name="确认发布").click()
@@ -742,3 +762,4 @@ if __name__ == "__main__":
         app.mainloop()
     else:
         print('免费使用，为避免他人收费盈利，内测时间已过，不予执行，可联系作者qq:2306995722，进行更新')
+        print('懂代码的可以查看代码 https://github.com/zbateau/Tomato-Novel-Auto-Publish-Tool ，自行修改，进行二次开发')
