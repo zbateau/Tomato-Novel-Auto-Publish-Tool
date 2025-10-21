@@ -21,8 +21,8 @@ AUTH_FILE = 'auth.json'
 class NovelPublisherApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("番茄小说自动发布工具-内测版")
-        self.geometry("800x600")
+        self.title("番茄小说自动发布工具-内测v1.4")
+        self.geometry("800x800")
 
         # Create and configure the main frame
         main_frame = ttk.Frame(self, padding="10")
@@ -68,21 +68,27 @@ class NovelPublisherApp(tk.Tk):
         ttk.Entry(config_frame, textvariable=self.novel_title_var, width=80).grid(row=4, column=1, sticky=tk.EW, padx=5)
 
         # Novels Folder
-        ttk.Label(config_frame, text="小说文件/文件夹:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(config_frame, text="小说文件夹:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=2)
         self.novels_folder_var = tk.StringVar(value=self.config.get('Novel', 'novels_folder', fallback=''))
         ttk.Entry(config_frame, textvariable=self.novels_folder_var, width=80).grid(row=5, column=1, sticky=tk.EW,
                                                                                     padx=5)
 
         # Fast Publish Mode
         ttk.Label(config_frame, text="最速开书发布:").grid(row=6, column=0, sticky=tk.W, padx=5, pady=2)
-        self.fast_publish_mode_var = tk.StringVar(value="15*3+2*7")
+        self.fast_publish_mode_var = tk.StringVar(value="10*1+10*3+5*7")
         ttk.Combobox(config_frame, textvariable=self.fast_publish_mode_var,
-                     values=["15*3+2*7", "10*1+15*2+3*7", "10*4+5*7"]).grid(row=6, column=1, sticky=tk.W, padx=5)
+                     values=["15+15*2+2*7", "10*1+15*2+3*7", "10*1+10*3+5*7", "10*1+5*6+3*10"]).grid(row=6, column=1, sticky=tk.W, padx=5)
+
+        # Chapter Count Display
+        ttk.Label(config_frame, text="章节总数:").grid(row=7, column=0, sticky=tk.W, padx=5, pady=2)
+        self.chapter_count_var = tk.StringVar(value="0")
+        self.chapter_count_label = ttk.Label(config_frame, textvariable=self.chapter_count_var)
+        self.chapter_count_label.grid(row=7, column=1, sticky=tk.W, padx=5)
 
         config_frame.columnconfigure(1, weight=1)
 
         # Save Config Button
-        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=6, column=1, sticky=tk.E, padx=5,
+        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=8, column=1, sticky=tk.E, padx=5,
                                                                                  pady=5)
 
         # --- Action Section ---
@@ -126,15 +132,32 @@ class NovelPublisherApp(tk.Tk):
         self.run_button = ttk.Button(action_frame, text="开始发布", command=self.run_automation_thread)
         self.run_button.pack(side=tk.RIGHT, padx=5)
 
+        # --- Extended functionality ---
+        others_frame = ttk.LabelFrame(main_frame, text="其他", padding="10")
+        others_frame.pack(fill=tk.X, pady=5)
+
+
+        # Export Button
+        ttk.Button(others_frame, text="导出章节", command=self.export_chapters).pack(side=tk.LEFT, padx=5)
+
+        # Import Button
+        ttk.Button(others_frame, text="导入章节", command=self.import_chapters).pack(side=tk.LEFT, padx=5)
+
+        # Manual Browser Button
+        ttk.Button(others_frame, text="手动操作", command=self.open_manual_browser).pack(side=tk.LEFT, padx=5)
+
         # --- Log Section ---
         log_frame = ttk.LabelFrame(main_frame, text="日志", padding="10")
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        log_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, state='disabled')
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         # Redirect stdout to the log widget
         self.redirect_logging()
+
+        # 初始化章节计数
+        self.update_chapter_count()
 
     def log(self, message):
         self.log_text.config(state='normal')
@@ -168,15 +191,39 @@ class NovelPublisherApp(tk.Tk):
             self.config['Settings']['publish_time'] = self.publish_time_var.get()
             self.config['Settings']['daily_publish_num'] = self.daily_publish_num_var.get()
             self.config['Novel']['novel_title'] = self.novel_title_var.get()
-            if self.novels_folder_var.get().endswith('.txt'):
-                self.create_chapter_files_in_files(self.novels_folder_var.get())
-            self.config['Novel']['novels_folder'] = self.novels_folder_var.get().replace('.txt', '')
+            if os.path.isdir(self.novels_folder_var.get()):
+                self.config['Novel']['novels_folder'] = self.novels_folder_var.get()
+            else:
+                messagebox.showerror("错误", "请输入正确的小说文件夹路径！拆分导入章节已独立")
+                return
+            # if self.novels_folder_var.get().endswith('.txt'):
+            #     self.create_chapter_files_in_files(self.novels_folder_var.get())
+            # self.config['Novel']['novels_folder'] = self.novels_folder_var.get().replace('.txt', '')
             self.novels_folder_var.set(self.config['Novel']['novels_folder'])
+            
+            # 更新章节计数
+            self.update_chapter_count()
+            
             with open(CONFIG_FILE, 'w', encoding='utf-8') as configfile:
                 self.config.write(configfile)
             messagebox.showinfo("成功", "配置已保存！")
         except Exception as e:
             messagebox.showerror("错误", f"保存配置失败: {e}")
+
+    def update_chapter_count(self):
+        """更新章节总数显示"""
+        try:
+            novels_folder = self.novels_folder_var.get()
+            if novels_folder and os.path.isdir(novels_folder):
+                chapter_files = [f for f in os.listdir(novels_folder) if f.endswith('.md') and f.startswith('Chapter_')]
+                count = len(chapter_files)
+                self.chapter_count_var.set(str(count))
+                print(f"检测到 {count} 个章节文件")
+            else:
+                self.chapter_count_var.set("0")
+        except Exception as e:
+            print(f"更新章节计数失败: {e}")
+            self.chapter_count_var.set("0")
 
     def run_login_thread(self):
         self.login_event = threading.Event()
@@ -229,6 +276,514 @@ class NovelPublisherApp(tk.Tk):
 
     def enable_run_button(self):
         self.run_button.config(state='normal')
+
+    def export_chapters(self):
+        """导出章节功能"""
+        try:
+            novels_folder = self.novels_folder_var.get()
+            if not novels_folder or not os.path.isdir(novels_folder):
+                messagebox.showerror("错误", "请先设置正确的小说文件夹路径")
+                return
+
+            # 获取章节文件
+            chapter_files = []
+            for f in os.listdir(novels_folder):
+                if f.endswith('.md') and f.startswith('Chapter_'):
+                    match = re.search(r'_(\d+)', f)
+                    if match:
+                        chapter_num = int(match.group(1))
+                        chapter_files.append((chapter_num, os.path.join(novels_folder, f)))
+            
+            if not chapter_files:
+                messagebox.showerror("错误", "未找到章节文件")
+                return
+
+            chapter_files.sort(key=lambda x: x[0])
+            
+            # 创建导出对话框
+            export_dialog = tk.Toplevel(self)
+            export_dialog.title("导出章节")
+            export_dialog.geometry("400x300")
+            export_dialog.transient(self)
+            export_dialog.grab_set()
+
+            # 导出范围选择
+            ttk.Label(export_dialog, text="选择导出范围:").pack(pady=10)
+            
+            # 范围输入框
+            range_frame = ttk.Frame(export_dialog)
+            range_frame.pack(pady=5)
+            
+            ttk.Label(range_frame, text="从第").pack(side=tk.LEFT)
+            start_var = tk.StringVar(value="1")
+            start_entry = ttk.Entry(range_frame, textvariable=start_var, width=5)
+            start_entry.pack(side=tk.LEFT, padx=5)
+            
+            ttk.Label(range_frame, text="章到第").pack(side=tk.LEFT)
+            end_var = tk.StringVar(value=str(chapter_files[-1][0]))
+            end_entry = ttk.Entry(range_frame, textvariable=end_var, width=5)
+            end_entry.pack(side=tk.LEFT, padx=5)
+            
+            ttk.Label(range_frame, text="章").pack(side=tk.LEFT)
+
+            # 导出选项
+            export_all_var = tk.BooleanVar(value=True)
+            ttk.Checkbutton(export_dialog, text="导出全部章节", 
+                            variable=export_all_var,
+                            command=lambda: self.toggle_export_range(start_entry, end_entry, export_all_var)).pack(pady=5)
+
+            # 输出文件名
+            ttk.Label(export_dialog, text="输出文件名:").pack(pady=5)
+            output_var = tk.StringVar(value=f"{self.novel_title_var.get()}_导出.txt")
+            ttk.Entry(export_dialog, textvariable=output_var, width=40).pack(pady=5)
+
+            def perform_export():
+                try:
+                    if export_all_var.get():
+                        start_chapter = 1
+                        end_chapter = chapter_files[-1][0]
+                    else:
+                        start_chapter = int(start_var.get())
+                        end_chapter = int(end_var.get())
+                    
+                    # 过滤要导出的章节
+                    export_files = []
+                    for chapter_num, filepath in chapter_files:
+                        if start_chapter <= chapter_num <= end_chapter:
+                            export_files.append((chapter_num, filepath))
+                    
+                    if not export_files:
+                        messagebox.showerror("错误", "没有选择要导出的章节")
+                        return
+
+                    # 导出内容
+                    output_content = []
+                    for chapter_num, filepath in export_files:
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                                # 移除Markdown格式，转换为纯文本
+                                content = content.replace('# ', '').replace('**', '')
+                                output_content.append(content)
+                                output_content.append('\n\n')  # 章节之间添加空行
+                        except Exception as e:
+                            print(f"读取章节 {chapter_num} 失败: {e}")
+                    
+                    # 保存文件
+                    output_path = os.path.join(novels_folder, output_var.get())
+                    with open(output_path, 'w', encoding='utf-8') as f:
+                        f.write(''.join(output_content))
+                    
+                    messagebox.showinfo("成功", f"导出完成！共导出 {len(export_files)} 个章节\n文件保存为: {output_path}")
+                    export_dialog.destroy()
+                    
+                except ValueError:
+                    messagebox.showerror("错误", "请输入有效的章节范围")
+                except Exception as e:
+                    messagebox.showerror("错误", f"导出失败: {e}")
+
+            # 导出按钮
+            ttk.Button(export_dialog, text="开始导出", command=perform_export).pack(pady=20)
+
+        except Exception as e:
+            messagebox.showerror("错误", f"导出功能出错: {e}")
+
+    def toggle_export_range(self, start_entry, end_entry, export_all_var):
+        """切换导出范围输入框的状态"""
+        if export_all_var.get():
+            start_entry.config(state='disabled')
+            end_entry.config(state='disabled')
+        else:
+            start_entry.config(state='normal')
+            end_entry.config(state='normal')
+
+    def import_chapters(self):
+        """导入章节功能"""
+        try:
+            # 创建导入对话框
+            import_dialog = tk.Toplevel(self)
+            import_dialog.title("导入章节")
+            import_dialog.geometry("600x500")
+            import_dialog.transient(self)
+            import_dialog.grab_set()
+            
+            # 文件选择区域
+            file_frame = ttk.LabelFrame(import_dialog, text="选择TXT文件", padding="10")
+            file_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            # 文件路径输入
+            ttk.Label(file_frame, text="文件路径:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+            txt_file_var = tk.StringVar()
+            txt_file_entry = ttk.Entry(file_frame, textvariable=txt_file_var, width=50)
+            txt_file_entry.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
+            
+            # 文件浏览按钮
+            def browse_txt_file():
+                from tkinter import filedialog
+                file_path = filedialog.askopenfilename(
+                    title="选择TXT文件",
+                    filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")]
+                )
+                if file_path:
+                    txt_file_var.set(file_path)
+            
+            ttk.Button(file_frame, text="浏览", command=browse_txt_file).grid(row=0, column=2, padx=5, pady=5)
+            file_frame.columnconfigure(1, weight=1)
+            
+            # 章节列表区域
+            list_frame = ttk.LabelFrame(import_dialog, text="章节列表", padding="10")
+            list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            # 章节列表
+            chapter_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE, height=10)
+            chapter_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+            
+            # 滚动条
+            scrollbar = ttk.Scrollbar(chapter_listbox, orient=tk.VERTICAL, command=chapter_listbox.yview)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            chapter_listbox.config(yscrollcommand=scrollbar.set)
+            
+            # 分解章节按钮
+            def parse_chapters():
+                file_path = txt_file_var.get()
+                if not file_path or not os.path.exists(file_path):
+                    messagebox.showerror("错误", "请选择有效的TXT文件")
+                    return
+                
+                if not file_path.endswith('.txt'):
+                    messagebox.showerror("错误", "请选择TXT文件")
+                    return
+                
+                try:
+                    # 读取文件内容
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # 使用正则表达式分解章节
+                    chapter_pattern = re.compile(r'(^\s*第[一二三四五六七八九十百千万\dIVXLCDM]+章.*$)', re.MULTILINE)
+                    parts = chapter_pattern.split(content)
+                    
+                    if len(parts) <= 1:
+                        messagebox.showerror("错误", "未找到任何章节")
+                        return
+                    
+                    # 清空列表
+                    chapter_listbox.delete(0, tk.END)
+                    
+                    # 解析章节
+                    chapters = []
+                    for i in range(1, len(parts), 2):
+                        title = parts[i].strip()
+                        if i + 1 < len(parts):
+                            chapter_content = parts[i + 1].strip()
+                            chapters.append({"title": title, "content": chapter_content})
+                    
+                    # 倒序添加到列表
+                    for i in range(len(chapters)-1, -1, -1):
+                        chapter_num = i + 1
+                        title = chapters[i]["title"]
+                        chapter_listbox.insert(tk.END, f"{chapter_num}_{title}")
+                    
+                    messagebox.showinfo("成功", f"成功解析出 {len(chapters)} 个章节")
+                    
+                except Exception as e:
+                    messagebox.showerror("错误", f"解析文件失败: {str(e)}")
+            
+            # 追加十章按钮功能
+            def select_next_ten():
+                # 获取当前所有项目
+                total_items = chapter_listbox.size()
+                if total_items == 0:
+                    messagebox.showinfo("提示", "请先分解章节")
+                    return
+                
+                # 获取当前选中的项目
+                currently_selected = set(chapter_listbox.curselection())
+                
+                # 从上到下查找10个未被选中的章节
+                selected_count = 0
+                for i in range(total_items):
+                    if i not in currently_selected:
+                        chapter_listbox.selection_set(i)
+                        selected_count += 1
+                        if selected_count >= 10:
+                            break
+                
+                if selected_count == 0:
+                    messagebox.showinfo("提示", "所有章节都已被选中")
+                else:
+                    pass
+                    # messagebox.showinfo("成功", f"已选择 {selected_count} 个章节")
+            
+            # 清除所有选择按钮功能
+            def clear_all_selections():
+                chapter_listbox.selection_clear(0, tk.END)
+                messagebox.showinfo("成功", "已清除所有选择")
+            
+            # 按钮容器
+            button_container = ttk.Frame(list_frame)
+            button_container.pack(fill=tk.X, pady=5)
+            
+            ttk.Button(button_container, text="分解章节", command=parse_chapters).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_container, text="追加十章", command=select_next_ten).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_container, text="清除所有", command=clear_all_selections).pack(side=tk.RIGHT, padx=5)
+            
+            # 保存路径区域
+            save_frame = ttk.LabelFrame(import_dialog, text="章节保存路径", padding="10")
+            save_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            ttk.Label(save_frame, text="保存路径:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+            save_path_var = tk.StringVar(value=self.novels_folder_var.get())
+            save_path_entry = ttk.Entry(save_frame, textvariable=save_path_var, width=50)
+            save_path_entry.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
+            
+            # 文件夹浏览按钮
+            def browse_save_folder():
+                from tkinter import filedialog
+                folder_path = filedialog.askdirectory(title="选择章节保存文件夹")
+                if folder_path:
+                    save_path_var.set(folder_path)
+            
+            ttk.Button(save_frame, text="浏览", command=browse_save_folder).grid(row=0, column=2, padx=5, pady=5)
+            save_frame.columnconfigure(1, weight=1)
+            
+            # 按钮区域
+            button_frame = ttk.Frame(import_dialog)
+            button_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            # 导入全部按钮
+            def import_all():
+                file_path = txt_file_var.get()
+                if not file_path or not os.path.exists(file_path):
+                    messagebox.showerror("错误", "请选择有效的TXT文件")
+                    return
+                
+                save_path = save_path_var.get()
+                if not save_path:
+                    messagebox.showerror("错误", "请选择保存路径")
+                    return
+                
+                try:
+                    # 确保目录存在
+                    os.makedirs(save_path, exist_ok=True)
+                    
+                    # 使用现有的create_chapter_files_in_files方法，但修改输出路径
+                    if not self.create_chapter_files_in_files_custom(file_path, save_path):
+                        messagebox.showerror("错误", "导入章节失败")
+                        return
+                    
+                    # 更新主界面的小说文件夹路径
+                    self.novels_folder_var.set(save_path)
+                    self.update_chapter_count()
+                    
+                    messagebox.showinfo("成功", f"成功导入全部章节到: {save_path}")
+                    import_dialog.destroy()
+                    
+                except Exception as e:
+                    messagebox.showerror("错误", f"导入失败: {str(e)}")
+            
+            # 追加导入按钮
+            def import_selected():
+                file_path = txt_file_var.get()
+                if not file_path or not os.path.exists(file_path):
+                    messagebox.showerror("错误", "请选择有效的TXT文件")
+                    return
+                
+                save_path = save_path_var.get()
+                if not save_path:
+                    messagebox.showerror("错误", "请选择保存路径")
+                    return
+                
+                selected_indices = chapter_listbox.curselection()
+                if not selected_indices:
+                    messagebox.showerror("错误", "请选择要导入的章节")
+                    return
+                
+                try:
+                    # 确保目录存在
+                    os.makedirs(save_path, exist_ok=True)
+                    
+                    # 获取当前文件夹中最大的章节号
+                    max_chapter_num = 0
+                    if os.path.exists(save_path):
+                        for f in os.listdir(save_path):
+                            if f.startswith('Chapter_') and f.endswith('.md'):
+                                match = re.search(r'Chapter_(\d+)\.md', f)
+                                if match:
+                                    num = int(match.group(1))
+                                    if num > max_chapter_num:
+                                        max_chapter_num = num
+                    
+                    # 读取文件内容
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # 使用正则表达式分解章节
+                    chapter_pattern = re.compile(r'(^\s*第[一二三四五六七八九十百千万\dIVXLCDM]+章.*$)', re.MULTILINE)
+                    parts = chapter_pattern.split(content)
+                    
+                    if len(parts) <= 1:
+                        messagebox.showerror("错误", "未找到任何章节")
+                        return
+                    
+                    # 解析章节
+                    chapters = []
+                    for i in range(1, len(parts), 2):
+                        title = parts[i].strip()
+                        if i + 1 < len(parts):
+                            chapter_content = parts[i + 1].strip()
+                            chapters.append({"title": title, "content": chapter_content})
+                    
+                    # 获取选中的章节（倒序索引转换）
+                    selected_chapters = []
+                    total_chapters = len(chapters)
+                    for idx in sorted(selected_indices, reverse=True):
+                        # 列表是倒序的，需要转换索引
+                        actual_idx = total_chapters - 1 - idx
+                        if 0 <= actual_idx < total_chapters:
+                            selected_chapters.append(chapters[actual_idx])
+                    
+                    # 创建选中的章节文件
+                    for i, chapter in enumerate(selected_chapters):
+                        chapter_number = max_chapter_num + i + 1
+                        title = str(chapter['title'])
+                        if title.find('：') == -1:
+                            c_index = title.find('章') + 1
+                            if c_index < len(title) and title[c_index] in [':', ' ']:
+                                title = title[:c_index] + '：' + title[c_index + 1:]
+                        title = title.replace(' ', '')
+                        file_name = f"Chapter_{chapter_number:03d}.md"
+                        file_path = os.path.join(save_path, file_name)
+                        
+                        with open(file_path, 'w', encoding='utf-8') as chapter_file:
+                            chapter_file.write(f"# {title}\n\n")
+                            chapter_file.write(chapter['content'])
+                    
+                    # 更新主界面的小说文件夹路径
+                    self.novels_folder_var.set(save_path)
+                    self.update_chapter_count()
+                    
+                    messagebox.showinfo("成功", f"成功导入 {len(selected_chapters)} 个章节到: {save_path}")
+                    import_dialog.destroy()
+                    
+                except Exception as e:
+                    messagebox.showerror("错误", f"导入失败: {str(e)}")
+            
+            ttk.Button(button_frame, text="导入全部", command=import_all).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="追加导入", command=import_selected).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="取消", command=import_dialog.destroy).pack(side=tk.RIGHT, padx=5)
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"打开导入对话框失败: {str(e)}")
+
+    def create_chapter_files_in_files_custom(self, novel_file_path: str, custom_output_dir: str):
+        """从文件中分解生成章节文件到指定目录"""
+        if not novel_file_path.endswith('.txt'):
+            print(f"错误: 文件 {novel_file_path} 不是文本文件，暂时不支持读取")
+            return False
+
+        os.makedirs(custom_output_dir, exist_ok=True)
+
+        try:
+            with open(novel_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except FileNotFoundError:
+            print(f"错误: 文件 {novel_file_path} 未找到。")
+            return False
+
+        # Regex to split text by chapter markers (e.g., "第...章").
+        # The pattern captures the chapter line, which is then used as the title.
+        # It handles various numeral types (Chinese, Arabic, Roman).
+        chapter_pattern = re.compile(r'(^\s*第[一二三四五六七八九十百千万\dIVXLCDM]+章.*$)', re.MULTILINE)
+        parts = chapter_pattern.split(content)
+
+        if len(parts) <= 1:
+            print("未找到任何章节。")
+            return False
+
+        # The result of split is [prologue, ch1_title, ch1_content, ch2_title, ch2_content, ...]
+        # We skip the prologue at parts[0].
+        chapters = []
+        # The loop starts at 1 and steps by 2 to get title/content pairs.
+        for i in range(1, len(parts), 2):
+            title = parts[i].strip()
+            # Ensure there is content for the chapter
+            if i + 1 < len(parts):
+                chapter_content = parts[i + 1].strip()
+                chapters.append({"title": title, "content": chapter_content})
+
+        # As per the request, we use the chapter index for file naming,
+        # as a full Chinese-to-Arabic numeral conversion is complex without external libraries.
+        for i, chapter in enumerate(chapters):
+            chapter_number = i + 1
+            _title = str(chapter['title'])
+            if _title.find('：') == -1:
+                c_index = _title.find('章') + 1
+                if _title[c_index] in [':', ' ']:
+                    _title = _title[:c_index] + '：' + _title[c_index + 1:]
+            _title = _title.replace(' ', '')
+            file_name = f"Chapter_{chapter_number:03d}.md"
+            file_path = os.path.join(custom_output_dir, file_name)
+
+            with open(file_path, 'w', encoding='utf-8') as chapter_file:
+                chapter_file.write(f"# {_title}\n\n")
+                chapter_file.write(chapter['content'])
+
+        print(f"成功分解 {len(chapters)} 个章节到目录: {custom_output_dir}")
+        return True
+
+    def open_manual_browser(self):
+        """打开手动浏览器，持续等待用户操作"""
+        try:
+            custom_browser_path = self.custom_browser_path_var.get()
+            site_url = self.config['Settings']['url']
+            
+            print("正在打开手动浏览器...")
+            print("浏览器将保持打开状态，您可以进行手动操作")
+            print("需要关闭时，请直接关闭浏览器窗口")
+            
+            # 在新线程中运行浏览器，避免阻塞主界面
+            def run_manual_browser():
+                try:
+                    with sync_playwright() as p:
+                        browser = p.chromium.launch(
+                            headless=False, 
+                            executable_path=custom_browser_path if custom_browser_path else None
+                        )
+                        if not os.path.exists(AUTH_FILE):
+                            messagebox.showerror("错误", f"未找到认证文件 {AUTH_FILE} 请先执行登录操作")
+                            return
+                        context = browser.new_context(storage_state=AUTH_FILE)
+                        page = context.new_page()
+                        
+                        # 导航到网站
+                        if site_url:
+                            page.goto(site_url, timeout=60000)
+                            print(f"已导航到: {site_url}")
+                        
+                        print("手动浏览器已启动，您可以自由操作")
+                        print("关闭浏览器窗口即可结束会话")
+                        
+                        # 保持浏览器打开，直到用户关闭
+                        try:
+                            while True:
+                                if page.is_closed():
+                                    break
+                                time.sleep(1)
+                        except Exception:
+                            pass
+                        
+                        print("手动浏览器已关闭")
+                        
+                except Exception as e:
+                    print(f"手动浏览器出错: {e}")
+            
+            # 启动浏览器线程
+            browser_thread = threading.Thread(target=run_manual_browser, daemon=True)
+            browser_thread.start()
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"打开手动浏览器失败: {e}")
 
     @staticmethod
     def create_chapter_files_in_files(novel_file_path: str):
@@ -486,12 +1041,15 @@ class NovelPublisherApp(tk.Tk):
             print(f"错误：找不到登录状态文件 {AUTH_FILE}。请先登录，允许扫码登录。")
             return
 
-        if novels_folder.endswith('.txt'):
-            print(f"识别为小说文件，正在从文件中分解章节...")
-            if not self.create_chapter_files_in_files(novels_folder):
-                raise Exception("从小说文件中分解章节失败")
-            else:
-                novels_folder = novels_folder.replace('.txt', '')
+        if not os.path.exists(novels_folder):
+            print(f"错误：小说文件夹 {novels_folder} 不存在。")
+            return
+        # if novels_folder.endswith('.txt'):
+        #     print(f"识别为小说文件，正在从文件中分解章节...")
+        #     if not self.create_chapter_files_in_files(novels_folder):
+        #         raise Exception("从小说文件中分解章节失败")
+        #     else:
+        #         novels_folder = novels_folder.replace('.txt', '')
 
         if start_chapter is not None and end_chapter is not None:
             novel_files = self.get_chapter_files_in_range(novels_folder, start_chapter, end_chapter)
@@ -618,6 +1176,105 @@ class NovelPublisherApp(tk.Tk):
                 print("主自动化流程中发生错误:")
                 traceback.print_exc()
 
+    def parse_fast_publish_mode(self, fast_publish_mode):
+        """
+        解析快速发布模式字符串，生成发布计划
+        例如: "15*1+15*2+2*7" 表示:
+        - 第一步: 发布1-15章
+        - 第二步: 预发布16-45章，每日15章，持续2天
+        - 第三步: 预发布46-60章，每日2章，持续7天
+        """
+        try:
+            # 分割字符串获取各个阶段
+            stages = fast_publish_mode.split('+')
+            plan = []
+            
+            current_chapter = 1
+            
+            for i, stage in enumerate(stages):
+                if '*' in stage:
+                    # 解析格式如 "15*3" (每日章节数*持续天数)
+                    daily_count, days = stage.split('*')
+                    daily_count = int(daily_count)
+                    days = int(days)
+                    
+                    if i == 0:
+                        # 第一步总是立即发布模式
+                        end_chapter = current_chapter + daily_count - 1
+                        plan.append({
+                            'mode': 'publish',
+                            'start_chapter': current_chapter,
+                            'end_chapter': end_chapter,
+                            'description': f"发布第{current_chapter}-{end_chapter}章"
+                        })
+                        current_chapter = end_chapter + 1
+                    else:
+                        # 后续步骤是预发布模式
+                        end_chapter = current_chapter + daily_count * days - 1
+                        plan.append({
+                            'mode': 'pre-publish',
+                            'start_chapter': current_chapter,
+                            'end_chapter': end_chapter,
+                            'daily_count': daily_count,
+                            'days': days,
+                            'description': f"预发布第{current_chapter}-{end_chapter}章 (每日{daily_count}章)"
+                        })
+                        current_chapter = end_chapter + 1
+                else:
+                    # 处理简单数字，如 "15"
+                    count = int(stage)
+                    end_chapter = current_chapter + count - 1
+                    
+                    if i == 0:
+                        # 第一步总是立即发布模式
+                        plan.append({
+                            'mode': 'publish',
+                            'start_chapter': current_chapter,
+                            'end_chapter': end_chapter,
+                            'description': f"发布第{current_chapter}-{end_chapter}章"
+                        })
+                    current_chapter = end_chapter + 1
+            
+            return plan
+        except Exception as e:
+            print(f"解析发布模式失败: {e}")
+            return None
+
+    def execute_publish_plan(self, plan):
+        """
+        执行发布计划
+        """
+        try:
+            for i, step in enumerate(plan, 1):
+                print(f"\n--- 步骤{i}: {step['description']} ---")
+                
+                # 设置发布模式
+                self.publish_mode_var.set(step['mode'])
+                
+                # 设置章节范围
+                self.start_chapter_var.set(str(step['start_chapter']))
+                self.end_chapter_var.set(str(step['end_chapter']))
+                
+                # 如果是预发布模式，设置每日发布章节数
+                if step['mode'] == 'pre-publish':
+                    self.daily_publish_num_var.set(str(step['daily_count']))
+                    
+                    # 如果是第一步预发布，设置从明天开始
+                    if i == 2:
+                        today = datetime.datetime.now()
+                        self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
+                
+                # 执行自动化流程
+                if not self.automation_flow():
+                    raise Exception(f"执行步骤{i}失败: {step['description']}")
+            
+            print("\n最速开书流程完成！")
+            return True
+        except Exception as e:
+            print(f"最速开书流程中发生错误: {e}")
+            traceback.print_exc()
+            return False
+
     def new_novel_publish_once(self):
         print("执行最速开书！")
 
@@ -638,123 +1295,15 @@ class NovelPublisherApp(tk.Tk):
             print(f"错误：小说章节不足{need_num}章，无法执行最速开书-{fast_publish_mode}。\n"
                   f"当前章节数: {len(all_files)}")
             return
-        if fast_publish_mode == "15*3+2*7":
-            # 15*3+2*7 章节字数不足版
-            try:
-                # 第一步：当日发布1-15章 # 保证字数过2万签约
-                print("\n--- 步骤1: 发布第1-15章 ---")
-                self.publish_mode_var.set("publish")
-                self.start_chapter_var.set("1")
-                self.end_chapter_var.set("15")
-                if not self.automation_flow():
-                    raise Exception("发布1-15章失败")
-
-                # 第二步：预发布16-45章，每日15章
-                print("\n--- 步骤2: 预发布第16-45章 (每日15章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("16")
-                self.end_chapter_var.set("45")
-                self.daily_publish_num_var.set("15")
-                # 设置从明天开始
-                today = datetime.datetime.now()
-                self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
-                if not self.automation_flow():
-                    raise Exception("预发布16-45章失败")
-
-                # 第三步：预发布46-60章，每日2章
-                print("\n--- 步骤3: 预发布第46-60章 (每日2章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("46")
-                self.end_chapter_var.set("60")
-                self.daily_publish_num_var.set("2")
-                # 从上一个发布任务结束后开始
-                if not self.automation_flow():
-                    raise Exception("预发布46-60章失败")
-
-                print("\n最速开书流程完成！")
-
-            except Exception as e:
-                print(f"最速开书流程中发生错误: {e}")
-                traceback.print_exc()
-
-        if fast_publish_mode == "10*1+15*2+3*7":
-            # 10+15*2+3*7 验证期日六版
-            try:
-                # 第一步：当日发布1-10章 # 保证字数过2万签约
-                print("\n--- 步骤1: 当日发布第1-10章 ---")
-                self.publish_mode_var.set("publish")
-                self.start_chapter_var.set("1")
-                self.end_chapter_var.set("10")
-                if not self.automation_flow():
-                    raise Exception("发布1-10章失败")
-
-                # 第二步：预发布11-40章，每日15章
-                print("\n--- 步骤2: 预发布第11-40章 (每日15章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("11")
-                self.end_chapter_var.set("40")
-                self.daily_publish_num_var.set("15")
-                # 设置从明天开始
-                today = datetime.datetime.now()
-                self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
-                if not self.automation_flow():
-                    raise Exception("预发布11-40章失败")
-
-                # 第三步：预发布41-61章，每日3章
-                print("\n--- 步骤3: 预发布第41-61章 (每日3章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("41")
-                self.end_chapter_var.set("61")
-                self.daily_publish_num_var.set("3")
-                # 从上一个发布任务结束后开始
-                if not self.automation_flow():
-                    raise Exception("预发布41-61章失败")
-
-                print("\n最速开书流程完成！")
-
-            except Exception as e:
-                print(f"最速开书流程中发生错误: {e}")
-                traceback.print_exc()
-
-        if fast_publish_mode == "10*4+5*7":
-            # 10*4+5*7 验证期日万版，四天推荐
-            try:
-                # 第一步：当日发布1-10章 # 保证字数过2万签约
-                print("\n--- 步骤1: 当日发布第1-10章 ---")
-                self.publish_mode_var.set("publish")
-                self.start_chapter_var.set("1")
-                self.end_chapter_var.set("10")
-                if not self.automation_flow():
-                    raise Exception("发布1-10章失败")
-
-                # 第二步：预发布11-40章，每日15章
-                print("\n--- 步骤2: 预发布第11-40章 (每日10章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("11")
-                self.end_chapter_var.set("40")
-                self.daily_publish_num_var.set("10")
-                # 设置从明天开始
-                today = datetime.datetime.now()
-                self.last_published_chapter_date_var.set(today.strftime('%Y-%m-%d'))
-                if not self.automation_flow():
-                    raise Exception("预发布11-40章失败")
-
-                # 第三步：预发布41-61章，每日5章
-                print("\n--- 步骤3: 预发布第41-75章 (每日5章) ---")
-                self.publish_mode_var.set("pre-publish")
-                self.start_chapter_var.set("41")
-                self.end_chapter_var.set("75")
-                self.daily_publish_num_var.set("5")
-                # 从上一个发布任务结束后开始
-                if not self.automation_flow():
-                    raise Exception("预发布41-75章失败")
-
-                print("\n最速开书流程完成！")
-
-            except Exception as e:
-                print(f"最速开书流程中发生错误: {e}")
-                traceback.print_exc()
-
+        
+        # 解析发布模式并生成发布计划
+        plan = self.parse_fast_publish_mode(fast_publish_mode)
+        if not plan:
+            print("解析发布模式失败")
+            return
+        # print(plan)
+        # 执行发布计划
+        self.execute_publish_plan(plan)
 
 if __name__ == "__main__":
     if datetime.datetime.now().year == 2025:
