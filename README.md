@@ -47,8 +47,8 @@
 [Settings]
 ; Edge 浏览器主程序（msedge.exe）的绝对路径
 custom_browser_path = C:/Program Files (x86)/Microsoft/Edge Dev/Application/msedge.exe
-; 番茄小说网作家后台的网址
-url = https://fanqienovel.com/main/writer/?enter_from=author_zone
+;已改为平台选项，内置网址
+publish_plate = 番茄小说
 ; 发布模式:
 ; publish: 立即发布
 ; draft: 存为草稿
@@ -75,7 +75,7 @@ last_published_chapter_date = 2025-10-12
 ### 配置项说明
 
 -   `custom_browser_path`: 您需要提供您电脑上安装的 Chromium 内核浏览器（如 Chrome, Edge）的可执行文件路径。
--   `url`: 一般保持默认即可。
+-   `publish_plate`: 选择发布平台（当然首先要登录和创建书籍）。
 -   `publish_mode`: 根据您的需求选择发布模式。
 -   `publish_time`: 如果 `publish_mode` 设置为 `pre-publish`，此项生效。
 -   `daily_publish_num`: 程序会根据此设置和历史记录自动计算下一次要发布的章节范围。
